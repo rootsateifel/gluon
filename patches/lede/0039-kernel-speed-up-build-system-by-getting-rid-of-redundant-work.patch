@@ -1,0 +1,26 @@
+From: Felix Fietkau <nbd@nbd.name>
+Date: Thu, 16 Mar 2017 09:33:18 +0100
+Subject: kernel: speed up build system by getting rid of redundant work
+
+KERNELRELEASE contains a $(shell) call which is evaluated over and over
+again.
+The call to checksyscalls.sh is unnecessary for LEDE and also takes a
+few seconds to complete.
+
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+
+diff --git a/include/kernel-defaults.mk b/include/kernel-defaults.mk
+index 10bd67a571f12b2ffeb97624654f3f2c68905af4..1c3b428b1661d2fa2e4feb9c0b1eb11992d9dd7d 100644
+--- a/include/kernel-defaults.mk
++++ b/include/kernel-defaults.mk
+@@ -23,7 +23,9 @@ KERNEL_MAKEOPTS := -C $(LINUX_DIR) \
+ 	HOST_LOADLIBES="-L$(STAGING_DIR_HOST)/lib" \
+ 	CONFIG_SHELL="$(BASH)" \
+ 	$(if $(findstring c,$(OPENWRT_VERBOSE)),V=1,V='') \
+-	$(if $(PKG_BUILD_ID),LDFLAGS_MODULE=--build-id=0x$(PKG_BUILD_ID))
++	$(if $(PKG_BUILD_ID),LDFLAGS_MODULE=--build-id=0x$(PKG_BUILD_ID)) \
++	KERNELRELEASE=$(LINUX_VERSION) \
++	cmd_syscalls=
+ 
+ ifdef CONFIG_STRIP_KERNEL_EXPORTS
+   KERNEL_MAKEOPTS += \

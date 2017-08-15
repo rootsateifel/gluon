@@ -1,0 +1,31 @@
+From: Florian Fainelli <f.fainelli@gmail.com>
+Date: Thu, 11 May 2017 14:33:42 -0700
+Subject: include: Do not alter KERNELRELEASE for external/git kernels
+
+In case we use external and/or git cloned kernels, let the kernel
+determine the appropriate KERNELRELEASE. We cannot used
+LINUX_UNAME_VERSION because that one gets determined at a later time,
+when the kernel is already built proper.
+
+Signed-off-by: Florian Fainelli <f.fainelli@gmail.com>
+
+diff --git a/include/kernel-defaults.mk b/include/kernel-defaults.mk
+index 1c3b428b1661d2fa2e4feb9c0b1eb11992d9dd7d..201c258835bd59b1da64a5c40e757a2845f27684 100644
+--- a/include/kernel-defaults.mk
++++ b/include/kernel-defaults.mk
+@@ -24,9 +24,14 @@ KERNEL_MAKEOPTS := -C $(LINUX_DIR) \
+ 	CONFIG_SHELL="$(BASH)" \
+ 	$(if $(findstring c,$(OPENWRT_VERBOSE)),V=1,V='') \
+ 	$(if $(PKG_BUILD_ID),LDFLAGS_MODULE=--build-id=0x$(PKG_BUILD_ID)) \
+-	KERNELRELEASE=$(LINUX_VERSION) \
+ 	cmd_syscalls=
+ 
++
++ifeq ($(call qstrip,$(CONFIG_EXTERNAL_KERNEL_TREE))$(call qstrip,$(CONFIG_KERNEL_GIT_CLONE_URI)),)
++  KERNEL_MAKEOPTS += \
++	KERNELRELEASE=$(LINUX_VERSION)
++endif
++
+ ifdef CONFIG_STRIP_KERNEL_EXPORTS
+   KERNEL_MAKEOPTS += \
+ 	EXTRA_LDSFLAGS="-I$(KERNEL_BUILD_DIR) -include symtab.h"

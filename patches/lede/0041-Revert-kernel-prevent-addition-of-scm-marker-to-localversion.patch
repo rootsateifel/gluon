@@ -1,0 +1,27 @@
+From: Florian Fainelli <f.fainelli@gmail.com>
+Date: Thu, 11 May 2017 14:33:41 -0700
+Subject: Revert "kernel: prevent addition of scm marker to localversion"
+
+This reverts commit 0df2c6563a3537ed21b28a9fb6874bf2718afd05 since it
+gets in the way of identifying properly which kernel we are running.
+This is particularly important if LEDE is using external kernels/git
+cloned kernels. We want to make sure we only load modules from that
+specific kernel.
+
+Signed-off-by: Florian Fainelli <f.fainelli@gmail.com>
+
+diff --git a/include/kernel-defaults.mk b/include/kernel-defaults.mk
+index 201c258835bd59b1da64a5c40e757a2845f27684..f9722a4904762e6885deaa76ba6efe40e359adcd 100644
+--- a/include/kernel-defaults.mk
++++ b/include/kernel-defaults.mk
+@@ -47,10 +47,6 @@ ifdef CONFIG_USE_SPARSE
+   KERNEL_MAKEOPTS += C=1 CHECK=$(STAGING_DIR_HOST)/bin/sparse
+ endif
+ 
+-ifneq ($(strip $(CONFIG_KERNEL_GIT_CLONE_URI)),"")
+- KERNEL_MAKEOPTS += LOCALVERSION=
+-endif
+-
+ export HOST_EXTRACFLAGS=-I$(STAGING_DIR_HOST)/include
+ 
+ # defined in quilt.mk

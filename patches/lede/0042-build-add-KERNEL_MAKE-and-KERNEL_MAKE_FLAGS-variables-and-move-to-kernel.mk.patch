@@ -1,0 +1,177 @@
+From: Felix Fietkau <nbd@nbd.name>
+Date: Thu, 16 Mar 2017 09:53:30 +0100
+Subject: build: add KERNEL_MAKE and KERNEL_MAKE_FLAGS variables and move to kernel.mk
+
+This allows packages to use kernel make options without the forced
+-C $(LINUX_DIR). It also makes it more clear that it to be called from
+kernel module packages directly.
+
+Signed-off-by: Felix Fietkau <nbd@nbd.name>
+
+diff --git a/include/kernel-build.mk b/include/kernel-build.mk
+index 32da94babc75268756120b9d9b63373a8cf44b39..b8e2ab3e5c8c8ad2a51bdd9d2c2ec9b2a7172aba 100644
+--- a/include/kernel-build.mk
++++ b/include/kernel-build.mk
+@@ -105,7 +105,7 @@ define BuildKernel
+   $(KERNEL_BUILD_DIR)/symtab.h: FORCE
+ 	rm -f $(KERNEL_BUILD_DIR)/symtab.h
+ 	touch $(KERNEL_BUILD_DIR)/symtab.h
+-	+$(MAKE) $(KERNEL_MAKEOPTS) vmlinux
++	+$(KERNEL_MAKE) vmlinux
+ 	find $(LINUX_DIR) $(STAGING_DIR_ROOT)/lib/modules -name \*.ko | \
+ 		xargs $(TARGET_CROSS)nm | \
+ 		awk '$$$$1 == "U" { print $$$$2 } ' | \
+@@ -160,7 +160,7 @@ define BuildKernel
+ 	rm -f $(LINUX_DIR)/.config.prev
+ 	rm -f $(STAMP_CONFIGURED)
+ 	$(LINUX_RECONF_CMD) > $(LINUX_DIR)/.config
+-	$(_SINGLE)$(MAKE) -C $(LINUX_DIR) $(KERNEL_MAKEOPTS) HOST_LOADLIBES="-L$(STAGING_DIR_HOST)/lib -lncurses" $$@
++	$(_SINGLE)$(KERNEL_MAKE) HOST_LOADLIBES="-L$(STAGING_DIR_HOST)/lib -lncurses" $$@
+ 	$(LINUX_RECONF_DIFF) $(LINUX_DIR)/.config > $(LINUX_RECONFIG_TARGET)
+ 
+   install: $(LINUX_DIR)/.image
+diff --git a/include/kernel-defaults.mk b/include/kernel-defaults.mk
+index f9722a4904762e6885deaa76ba6efe40e359adcd..05f4be02c82c80ea9c86b351b0e6192a8d21d3f9 100644
+--- a/include/kernel-defaults.mk
++++ b/include/kernel-defaults.mk
+@@ -11,27 +11,6 @@ ifneq ($(SOURCE_DATE_EPOCH),)
+   endif
+ endif
+ 
+-KERNEL_MAKEOPTS := -C $(LINUX_DIR) \
+-	HOSTCFLAGS="$(HOST_CFLAGS) -Wall -Wmissing-prototypes -Wstrict-prototypes" \
+-	CROSS_COMPILE="$(KERNEL_CROSS)" \
+-	ARCH="$(LINUX_KARCH)" \
+-	KBUILD_HAVE_NLS=no \
+-	KBUILD_BUILD_USER="$(call qstrip,$(CONFIG_KERNEL_BUILD_USER))" \
+-	KBUILD_BUILD_HOST="$(call qstrip,$(CONFIG_KERNEL_BUILD_DOMAIN))" \
+-	KBUILD_BUILD_TIMESTAMP="$(KBUILD_BUILD_TIMESTAMP)" \
+-	KBUILD_BUILD_VERSION="0" \
+-	HOST_LOADLIBES="-L$(STAGING_DIR_HOST)/lib" \
+-	CONFIG_SHELL="$(BASH)" \
+-	$(if $(findstring c,$(OPENWRT_VERBOSE)),V=1,V='') \
+-	$(if $(PKG_BUILD_ID),LDFLAGS_MODULE=--build-id=0x$(PKG_BUILD_ID)) \
+-	cmd_syscalls=
+-
+-
+-ifeq ($(call qstrip,$(CONFIG_EXTERNAL_KERNEL_TREE))$(call qstrip,$(CONFIG_KERNEL_GIT_CLONE_URI)),)
+-  KERNEL_MAKEOPTS += \
+-	KERNELRELEASE=$(LINUX_VERSION)
+-endif
+-
+ ifdef CONFIG_STRIP_KERNEL_EXPORTS
+   KERNEL_MAKEOPTS += \
+ 	EXTRA_LDSFLAGS="-I$(KERNEL_BUILD_DIR) -include symtab.h"
+@@ -43,10 +22,6 @@ ifneq (,$(KERNEL_CC))
+   KERNEL_MAKEOPTS += CC="$(KERNEL_CC)"
+ endif
+ 
+-ifdef CONFIG_USE_SPARSE
+-  KERNEL_MAKEOPTS += C=1 CHECK=$(STAGING_DIR_HOST)/bin/sparse
+-endif
+-
+ export HOST_EXTRACFLAGS=-I$(STAGING_DIR_HOST)/include
+ 
+ # defined in quilt.mk
+@@ -127,7 +102,7 @@ define Kernel/Configure/Default
+ 		cp $(LINUX_DIR)/.config.set $(LINUX_DIR)/.config; \
+ 		cp $(LINUX_DIR)/.config.set $(LINUX_DIR)/.config.prev; \
+ 	}
+-	$(_SINGLE) [ -d $(LINUX_DIR)/user_headers ] || $(MAKE) $(KERNEL_MAKEOPTS) INSTALL_HDR_PATH=$(LINUX_DIR)/user_headers headers_install
++	$(_SINGLE) [ -d $(LINUX_DIR)/user_headers ] || $(KERNEL_MAKE) INSTALL_HDR_PATH=$(LINUX_DIR)/user_headers headers_install
+ 	grep '=[ym]' $(LINUX_DIR)/.config.set | LC_ALL=C sort | mkhash md5 > $(LINUX_DIR)/.vermagic
+ endef
+ 
+@@ -137,7 +112,7 @@ endef
+ 
+ define Kernel/CompileModules/Default
+ 	rm -f $(LINUX_DIR)/vmlinux $(LINUX_DIR)/System.map
+-	+$(MAKE) $(KERNEL_MAKEOPTS) modules
++	+$(KERNEL_MAKE) modules
+ endef
+ 
+ OBJCOPY_STRIP = -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id
+@@ -161,7 +136,7 @@ endef
+ 
+ define Kernel/CompileImage/Default
+ 	rm -f $(TARGET_DIR)/init
+-	+$(MAKE) $(KERNEL_MAKEOPTS) $(if $(KERNELNAME),$(KERNELNAME),all) modules
++	+$(KERNEL_MAKE) $(if $(KERNELNAME),$(KERNELNAME),all) modules
+ 	$(call Kernel/CopyImage)
+ endef
+ 
+@@ -170,7 +145,7 @@ define Kernel/CompileImage/Initramfs
+ 	$(call Kernel/Configure/Initramfs)
+ 	$(CP) $(GENERIC_PLATFORM_DIR)/base-files/init $(TARGET_DIR)/init
+ 	rm -rf $(KERNEL_BUILD_DIR)/linux-$(LINUX_VERSION)/usr/initramfs_data.cpio*
+-	+$(MAKE) $(KERNEL_MAKEOPTS) $(if $(KERNELNAME),$(KERNELNAME),all) modules
++	+$(KERNEL_MAKE) $(if $(KERNELNAME),$(KERNELNAME),all) modules
+ 	$(call Kernel/CopyImage,-initramfs)
+ endef
+ else
+diff --git a/include/kernel.mk b/include/kernel.mk
+index b1d0e8d927cb462b486cfd645d68963f1b6ab8ff..779d24ac5c654347e69eba127c63b256136376df 100644
+--- a/include/kernel.mk
++++ b/include/kernel.mk
+@@ -85,6 +85,35 @@ else
+   LINUX_KARCH := $(ARCH)
+ endif
+ 
++KERNEL_MAKE = $(MAKE) $(KERNEL_MAKEOPTS)
++
++KERNEL_MAKE_FLAGS := \
++	HOSTCFLAGS="$(HOST_CFLAGS) -Wall -Wmissing-prototypes -Wstrict-prototypes" \
++	CROSS_COMPILE="$(KERNEL_CROSS)" \
++	ARCH="$(LINUX_KARCH)" \
++	KBUILD_HAVE_NLS=no \
++	KBUILD_BUILD_USER="$(call qstrip,$(CONFIG_KERNEL_BUILD_USER))" \
++	KBUILD_BUILD_HOST="$(call qstrip,$(CONFIG_KERNEL_BUILD_DOMAIN))" \
++	KBUILD_BUILD_TIMESTAMP="$(KBUILD_BUILD_TIMESTAMP)" \
++	KBUILD_BUILD_VERSION="0" \
++	HOST_LOADLIBES="-L$(STAGING_DIR_HOST)/lib" \
++	CONFIG_SHELL="$(BASH)" \
++	$(if $(findstring c,$(OPENWRT_VERBOSE)),V=1,V='') \
++	$(if $(PKG_BUILD_ID),LDFLAGS_MODULE=--build-id=0x$(PKG_BUILD_ID)) \
++	KERNELRELEASE=$(LINUX_VERSION) \
++	cmd_syscalls=
++
++ifeq ($(call qstrip,$(CONFIG_EXTERNAL_KERNEL_TREE))$(call qstrip,$(CONFIG_KERNEL_GIT_CLONE_URI)),)
++  KERNEL_MAKEOPTS += \
++	KERNELRELEASE=$(LINUX_VERSION)
++endif
++
++KERNEL_MAKEOPTS := -C $(LINUX_DIR) $(KERNEL_MAKE_FLAGS)
++
++ifdef CONFIG_USE_SPARSE
++  KERNEL_MAKEOPTS += C=1 CHECK=$(STAGING_DIR_HOST)/bin/sparse
++endif
++
+ define KernelPackage/Defaults
+   FILES:=
+   AUTOLOAD:=
+diff --git a/package/kernel/kmod-sched-cake/Makefile b/package/kernel/kmod-sched-cake/Makefile
+index b58c610b2ced5b0cf26e690b6b8e1d907a7e7734..c6133f93bb72b6f57ba25c814ff7836edb37159e 100644
+--- a/package/kernel/kmod-sched-cake/Makefile
++++ b/package/kernel/kmod-sched-cake/Makefile
+@@ -36,7 +36,7 @@ define KernelPackage/sched-cake/description
+ endef
+ 
+ define Build/Compile
+-	$(MAKE) $(KERNEL_MAKEOPTS) SUBDIRS="$(PKG_BUILD_DIR)" modules
++	$(KERNEL_MAKE) SUBDIRS="$(PKG_BUILD_DIR)" modules
+ endef
+ 
+ $(eval $(call KernelPackage,sched-cake))
+diff --git a/package/kernel/trelay/Makefile b/package/kernel/trelay/Makefile
+index f95115a7d9d80259493eb0a05e4f00f6970cae2d..525a028c35d3831a00e9b81b6ec25a0dcb5ac6a4 100644
+--- a/package/kernel/trelay/Makefile
++++ b/package/kernel/trelay/Makefile
+@@ -32,7 +32,7 @@ endef
+ include $(INCLUDE_DIR)/kernel-defaults.mk
+ 
+ define Build/Compile
+-	$(MAKE) $(KERNEL_MAKEOPTS) SUBDIRS="$(PKG_BUILD_DIR)" modules
++	$(KERNEL_MAKE) SUBDIRS="$(PKG_BUILD_DIR)" modules
+ endef
+ 
+ define KernelPackage/trelay/conffiles

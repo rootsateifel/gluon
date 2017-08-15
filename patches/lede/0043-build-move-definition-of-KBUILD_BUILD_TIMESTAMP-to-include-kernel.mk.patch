@@ -1,0 +1,43 @@
+From: Alexander Couzens <lynxis@fe80.eu>
+Date: Tue, 13 Jun 2017 13:04:35 +0200
+Subject: build: move definition of KBUILD_BUILD_TIMESTAMP to include/kernel.mk
+
+Fixes: 0aed054bec (build: add KERNEL_MAKE and KERNEL_MAKE_FLAGS
+variables and move to kernel.mk)
+
+Signed-off-by: Alexander Couzens <lynxis@fe80.eu>
+
+diff --git a/include/kernel-defaults.mk b/include/kernel-defaults.mk
+index 05f4be02c82c80ea9c86b351b0e6192a8d21d3f9..138a3d01454b5f5b763effeb68eafa27e80f940e 100644
+--- a/include/kernel-defaults.mk
++++ b/include/kernel-defaults.mk
+@@ -5,12 +5,6 @@
+ # See /LICENSE for more information.
+ #
+ 
+-ifneq ($(SOURCE_DATE_EPOCH),)
+-  ifndef DUMP
+-    KBUILD_BUILD_TIMESTAMP:=$(shell perl -e 'print scalar gmtime($(SOURCE_DATE_EPOCH))')
+-  endif
+-endif
+-
+ ifdef CONFIG_STRIP_KERNEL_EXPORTS
+   KERNEL_MAKEOPTS += \
+ 	EXTRA_LDSFLAGS="-I$(KERNEL_BUILD_DIR) -include symtab.h"
+diff --git a/include/kernel.mk b/include/kernel.mk
+index 779d24ac5c654347e69eba127c63b256136376df..98c8c283a8d8ca24108274991808e9f63ab5f4ff 100644
+--- a/include/kernel.mk
++++ b/include/kernel.mk
+@@ -10,6 +10,12 @@ CHECK:=1
+ DUMP:=1
+ endif
+ 
++ifneq ($(SOURCE_DATE_EPOCH),)
++  ifndef DUMP
++    KBUILD_BUILD_TIMESTAMP:=$(shell perl -e 'print scalar gmtime($(SOURCE_DATE_EPOCH))')
++  endif
++endif
++
+ ifeq ($(__target_inc),)
+   ifndef CHECK
+     include $(INCLUDE_DIR)/target.mk
