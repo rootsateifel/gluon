@@ -1,6 +1,7 @@
 return function(form, uci)
 	local site = require 'gluon.site'
 	local path = '/lib/gluon/domains'
+	local fs = require 'nixio.fs'
 
 	local function read_json(path)
 
@@ -50,9 +51,7 @@ return function(form, uci)
 	end
 
 	function o:write(data)
-		local system = uci:get_first('gluon', 'system')
-		uci:set('gluon', system, 'domain_code', data )
-		--os.execute('/lib/gluon/domain_changed.sh')
+		fs.writefile('/tmp/new_domain_code', data)
 	end
 
 	return {'gluon'}

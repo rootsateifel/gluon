@@ -42,8 +42,21 @@ function f:write()
 
 	uci:set("gluon-setup-mode", uci:get_first("gluon-setup-mode", "setup_mode"), "configured", true)
 
+	local new_domain_code = fs.readfile('/tmp/new_domain_code')
+	fs.remove('/tmp/new_domain_code')
+	local system = uci:get_first('gluon', 'system')
+	local update_domain = false
+	if new_domain_code ~= uci:get('gluon', system, 'domain_code') then
+		uci:set('gluon', system, 'domain_code', new_domain_code)
+		update_domain = true
+	end
+
 	for _, c in ipairs(commit) do
 		uci:commit(c)
+	end
+
+	if update_domain then
+		os.execute('/lib/gluon/domain_changed.sh')
 	end
 
 	f.template = "gluon/config-mode/reboot"
