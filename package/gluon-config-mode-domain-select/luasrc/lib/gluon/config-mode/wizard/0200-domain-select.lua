@@ -26,8 +26,14 @@ return function(form, uci)
 		local list = {}
 		for domain_path in io.popen('find ' .. path .. '/ -iname \*.json -print'):lines() do
 			local domain_code = domain_path:match(path .. '/(.*)\.json$')
-			table.insert(list, domain_code)
+			local domain = read_json(domain_path)
+			table.insert(list, {
+				domain_code = domain_code,
+				domain_name = (domain.domain_aliases or {})[domain_code] or domain.domain_name,
+				hide_domain = domain.hide_domain or False,
+			})
 		end
+		table.sort(list, function(a,b) return a.domain_name < b.domain_name end)
 		return list
 	end
 
@@ -43,10 +49,9 @@ return function(form, uci)
 		o:value('')
 	end
 
-	for _, domain_code in pairs(get_domain_list()) do
-		local domain = read_json(path .. '/' .. domain_code .. '.json')
+	for _, domain in pairs(get_domain_list()) do
 		if not domain.hide_domain then
-			o:value(domain_code, domain.domain_name)
+			o:value(domain.domain_code, domain.domain_name)
 		end
 	end
 
