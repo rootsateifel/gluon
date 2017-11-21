@@ -184,6 +184,17 @@ packages $ATH10K_PACKAGES
 factory -squashfs-factory${GLUON_REGION:+-${GLUON_REGION}} .bin
 
 if [ "$BROKEN" ]; then
+device tp-link-archer-c58-v1 archer-c58-v1
+packages $ATH10K_PACKAGES_QCA9887
+
+device tp-link-archer-c59-v1 archer-c59-v1
+packages $ATH10K_PACKAGES_QCA9887
+
+device tp-link-archer-c60-v1 archer-c60-v1
+packages $ATH10K_PACKAGES_QCA9887
+fi
+
+if [ "$BROKEN" ]; then
 device tp-link-archer-c25-v1 archer-c25-v1 # instability with 5GHz mesh in some environments
 packages $ATH10K_PACKAGES_QCA9887
 fi
