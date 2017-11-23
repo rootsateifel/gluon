@@ -1,0 +1,17 @@
+From: blocktrron <blocktrron@users.noreply.github.com>
+Date: Thu, 23 Nov 2017 02:31:53 +0100
+Subject: fix partitioning of archer c59
+
+diff --git a/target/linux/ar71xx/image/tp-link.mk b/target/linux/ar71xx/image/tp-link.mk
+index 0e2b374a96aef2eddb54cfdbb20c7fb34739deea..77c75b812b355d15222856e46328bdc238fd43e4 100644
+--- a/target/linux/ar71xx/image/tp-link.mk
++++ b/target/linux/ar71xx/image/tp-link.mk
+@@ -145,7 +145,7 @@ define Device/archer-c59-v1
+   IMAGES := sysupgrade.bin factory.bin
+   IMAGE/sysupgrade.bin := append-rootfs | tplink-safeloader sysupgrade
+   IMAGE/factory.bin := append-rootfs | tplink-safeloader factory
+-  MTDPARTS := spi0.0:128k(factory-uboot)ro,64k(u-boot)ro,1536k(kernel),6272k(rootfs),128k(config)ro,64k(art)ro,7808k@0x30000(firmware)
++  MTDPARTS := spi0.0:64k(u-boot)ro,64k(mac)ro,1536k(kernel),12992k(rootfs),1664k(tplink)ro,64k(art)ro,14528k@0x20000(firmware)
+ endef
+ TARGET_DEVICES += archer-c59-v1
+ 
